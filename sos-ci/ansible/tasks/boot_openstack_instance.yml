@@ -1,16 +1,15 @@
 # Creates a new VM and attaches to a network and passes metadata to the instance
 - nova_compute:
-      state: present
-      login_username: "{{ os_login }}"
-      login_password: "{{ os_password }}"
-      login_tenant_name: "{{ os_tenant_name }}"
-      auth_url: "{{ auth_url }}"
-      name: "{{ instance_name }}"
-      image_id: "{{ image_id }}"
-      flavor_id: "{{ flavor_id }}"
-      key_name: "{{ key_name }}"
-      wait_for: 300
-      auto_floating_ip: yes
+    state: present
+    login_username: "{{ os_login }}"
+    login_password: "{{ os_password }}"
+    login_tenant_name: "{{ os_tenant_name }}"
+    auth_url: "{{ auth_url }}"
+    name: "{{ instance_name }}"
+    image_id: "{{ image_id }}"
+    flavor_id: "{{ flavor_id }}"
+    key_name: "{{ key_name }}"
+    wait_for: 300
   register: devstack_instance
 
 - name: output info

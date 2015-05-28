@@ -8,9 +8,9 @@
       chdir: /opt/stack/cinder
     ignore_errors: True
 
-  - name: run tempest
+  - name: run tempest nfs
     sudo: no
-    shell:  tox -eall -- '(?!.*(volume_upload|volume_backup))volume' | tee -a console.log.out
+    shell: tox -eall -- '(?!.*(volume_upload|volume_backup))volume' | tee -a console.log.out
     args:
       chdir: /opt/stack/tempest
 

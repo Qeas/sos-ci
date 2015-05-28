@@ -17,15 +17,16 @@ this is super straight forward and it works so we'll use it for now.
 """
 
 
-def just_doit(patchset_ref, results_dir):
+def just_doit(patchset_ref, results_dir, backend_name):
     """ Do the dirty work, or let ansible do it. """
 
     ref_name = patchset_ref.replace('/', '-')
     logger = log.setup_logger(results_dir + '/ansible.out')
     logger.debug('Attempting ansible tasks on ref-name: %s', ref_name)
-    vars = "instance_name=%s" % (ref_name)
+    vars = "instance_name=%s-%s" % (ref_name, backend_name)
     vars += " patchset_ref=%s" % patchset_ref
     vars += " results_dir=%s" % results_dir
+    vars += " backend_name=%s" % backend_name
     cmd = '/usr/bin/ansible-playbook --extra-vars '\
           '\"%s\" %s/run_ci.yml' % (vars, cfg.Ansible.ansible_dir)
 
@@ -37,6 +38,7 @@ def just_doit(patchset_ref, results_dir):
     
     vars = "ref_name=%s" % (ref_name)
     vars += " results_dir=%s" % results_dir
+    vars += " backend_name=%s" % backend_name
     cmd = '/usr/bin/ansible-playbook --extra-vars '\
           '\"%s\" %s/publish.yml' % (vars, cfg.Ansible.ansible_dir)
     logger.debug('Running ansible publish command: %s', cmd)
@@ -70,7 +72,7 @@ def just_doit(patchset_ref, results_dir):
     # NOTE it's moved out of tasks here otherwise it won't
     # run if preceded by a failure
 
-    vars = "instance_name=%s" % (ref_name)
+    vars = "instance_name=%s-%s" % (ref_name, backend_name)
     vars += " patchset_ref=%s" % patchset_ref
     cmd = '/usr/bin/ansible-playbook --extra-vars '\
           '\"%s\" %s/teardown.yml' % (vars, cfg.Ansible.ansible_dir)

@@ -30,10 +30,10 @@ API_RATE_LIMIT=False
 USE_SCREEN=True
 
 # Settings to enable use of Driver
-CINDER_ENABLED_BACKENDS=ns_nfs
-TEMPEST_VOLUME_DRIVER=cinder.volume.drivers.nexenta.nfs.NexentaNfsDriver
+CINDER_ENABLED_BACKENDS=ns_iscsi
+TEMPEST_VOLUME_DRIVER=cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver
 TEMPEST_VOLUME_VENDOR="Nexenta"
-TEMPEST_STORAGE_PROTOCOL=NFS
+TEMPEST_STORAGE_PROTOCOL=iSCSI
 
 # Disable security groups entirely
 Q_USE_SECGROUP=False
@@ -42,11 +42,11 @@ CINDER_SECURE_DELETE=False
 CINDER_BRANCH=master
 
 [[post-config|$CINDER_CONF]]
-[DEFAULT]
-CINDER_ENABLED_BACKENDS=ns_nfs
-[ns_nfs]
-volume_driver=cinder.volume.drivers.nexenta.nfs.NexentaNfsDriver
-nexenta_shares_config=/home/ubuntu/shares.cfg
-nfs_shares_config=/home/ubuntu/shares.cfg
-volume_backend_name=ns_nfs
-nas_secure_file_operations=False
+[ns_iscsi]
+volume_driver=cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver
+volume_backend_name=ns_iscsi
+nexenta_host=172.16.0.126
+nexenta_rest_port=8457
+nexenta_user=admin
+nexenta_password=nexenta
+nexenta_volume=cinder

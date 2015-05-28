@@ -92,32 +92,36 @@ def _send_notification_email(subject, msg):
 class JobThread(Thread):
     """ Thread to process the gerrit events. """
 
-    def _post_results_to_gerrit(self, log_location, passed, commit_id, elapsed):
+    def _post_results_to_gerrit(self, log_location, results, commit_id):
         logger.debug("Post results to gerrit using %(location)s\n "
-                     "passed: %(passed)s\n commit_id: %(commit_id)s\n",
+                     "commit_id: %(commit_id)s\n",
                      {'location': log_location,
-                      'passed': passed,
                       'commit_id': commit_id})
 
-        cmd = "gerrit review -m "
+        cmd = 'gerrit review -m "'
         subject = ''
         msg = ''
         logger.debug('Building gerrit review message...')
         msg = 'Commit: %s\nLogs: %s\n' % (commit_id, log_location)
-        m, s = divmod(elapsed, 60)
-        elapsed_str = '%sm %ss' % (m, s)
-        if passed:
-            subject += " %s SUCCESS" % cfg.AccountInfo.ci_name
-            msg += "Result: SUCCESS"
-            cmd += """"* %s %s : SUCCESS in %s" %s""" % \
-                   (cfg.AccountInfo.ci_name, log_location, elapsed_str, commit_id)
-            logger.debug("Created success cmd: %s", cmd)
-        else:
-            subject += " nexenta-dsvm FAILED"
-            msg += "Result: FAILED"
-            cmd += """"* %s %s : FAILURE in %s" %s""" % \
-                   (cfg.AccountInfo.ci_name, log_location, elapsed_str, commit_id)
-            logger.debug("Created failed cmd: %s", cmd)
+        for backend_name in results:
+            result = results[backend_name]
+            m, s = divmod(result['elapsed'], 60)
+            elapsed_str = '%sm %ss' % (m, s)
+            ci_name = cfg.AccountInfo.ci_name + '-' + backend_name
+            if result['success']:
+                subject += " %s SUCCESS" % ci_name
+                msg += "Result: SUCCESS\n"
+                cmd += '* %s %s/%s : SUCCESS in %s\n' % \
+                       (ci_name, log_location, backend_name, elapsed_str)
+                logger.debug("Created success cmd: %s", cmd)
+            else:
+                subject += " %s FAILED" % ci_name
+                msg += "Result: FAILED\n"
+                cmd += '* %s %s/%s : FAILURE in %s\n' % \
+                       (ci_name, log_location, backend_name, elapsed_str)
+                logger.debug("Created failed cmd: %s", cmd)
+
+        cmd += '" %s' % commit_id
 
         logger.debug('Issue notification email, '
                      'Subject: %(subject)s, %(msg)s',
@@ -140,13 +144,12 @@ class JobThread(Thread):
                              int(cfg.AccountInfo.gerrit_port),
                              cfg.AccountInfo.ci_account,
                              key_filename=cfg.AccountInfo.gerrit_ssh_key)
+            logger.info('Issue vote: %s', cmd)
+            self.stdin, self.stdout, self.stderr =\
+                self.ssh.exec_command(cmd)
         except paramiko.SSHException as e:
             logger.error('%s', e)
-            sys.exit(1)
-
-        logger.info('Issue vote: %s', cmd)
-        self.stdin, self.stdout, self.stderr =\
-            self.ssh.exec_command(cmd)
+            #sys.exit(1)
 
     def _run_subunit2sql(self, results_dir, ref_name):
         if not cfg.DataBase.enable_subunit2sql:
@@ -182,14 +185,14 @@ class JobThread(Thread):
                 # run cleanup on the backend device
                 pipeline.append(valid_event)
 
-                # Launch instance, run tempest etc etc etc
+                
                 patchset_ref = event['patchSet']['ref']
                 revision = event['patchSet']['revision']
                 logger.debug('Grabbed revision from event: %s', revision)
 
                 ref_name = patchset_ref.replace('/', '-')
+                
                 results_dir = DATA_DIR + '/' + ref_name
-
                 # This might be a recheck, if so we've presumably
                 # run things once and published, so delete the
                 # local copy and run it again
@@ -197,30 +200,40 @@ class JobThread(Thread):
                     shutil.rmtree(results_dir)
                 os.mkdir(results_dir)
 
-                start = time.time()
-                try:
-                    commit_id, success, output = \
-                        executor.just_doit(event['patchSet']['ref'],
-                                           results_dir)
-                    logger.info('Completed just_doit: %(commit)s, '
-                                '%(success)s, %(output)s',
-                                {'commit': commit_id,
-                                 'success': success,
-                                 'output': output})
+                # Launch instance, run tempest etc etc etc for every backend
+                enabled_backends = cfg.AccountInfo.enabled_backends.split(',')
+                results = {}
+                for backend_name in enabled_backends:
+                    res_dir = results_dir + '/' + backend_name
+                    os.mkdir(res_dir)
 
-                except InstanceBuildException:
-                    logger.error('Received InstanceBuildException...')
-                    pass
-                elapsed = int(time.time() - start)
+                    start = time.time()
+                    try:
+                        commit_id, success, output = \
+                            executor.just_doit(event['patchSet']['ref'],
+                                               res_dir, backend_name)
+                        logger.info('Completed just_doit: %(commit)s, '
+                                    '%(success)s, %(output)s',
+                                    {'commit': commit_id,
+                                     'success': success,
+                                     'output': output})
 
-                if commit_id is None:
-                    commit_id = revision
+                    except InstanceBuildException:
+                        logger.error('Received InstanceBuildException...')
+                        pass
+                    elapsed = int(time.time() - start)
 
-                logger.info("Completed %s", cfg.AccountInfo.ci_name)
+                    if commit_id is None:
+                        commit_id = revision
+
+                    logger.info("Completed %s", cfg.AccountInfo.ci_name + '-' + backend_name)
+                    results[backend_name] = dict(success = success,
+                        output = output, elapsed = elapsed)
+
                 url_name = patchset_ref.replace('/', '-')
                 log_location = 'http://140.174.232.106/' + url_name
-                self._post_results_to_gerrit(log_location, success, commit_id, elapsed)
-                self._run_subunit2sql(results_dir, ref_name)
+                self._post_results_to_gerrit(log_location, results, commit_id)
+                #self._run_subunit2sql(res_dir, ref_name)
 
                 try:
                     pipeline.remove(valid_event)
@@ -289,7 +302,7 @@ if __name__ == '__main__':
         JobThread().start()
 
     while True:
-        events = GerritEventStream('sfci')
+        events = GerritEventStream('nsci')
         for event in events:
             try:
                 event = json.loads(event)

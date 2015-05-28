@@ -15,7 +15,7 @@
 
   - name: send over local.conf
     sudo: no
-    template: src=../../templates/localconf.base dest=/home/ubuntu/devstack/local.conf
+    template: src=../../templates/localconf.{{backend_name}} dest=/home/ubuntu/devstack/local.conf
 
   - name: modify cinder_branch
     lineinfile: dest=/home/ubuntu/devstack/local.conf regexp=^CINDER_BRANCH= line=CINDER_BRANCH={{ patchset_ref }}
