@@ -45,8 +45,8 @@ CINDER_BRANCH=master
 [ns_iscsi]
 volume_driver=cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver
 volume_backend_name=ns_iscsi
-nexenta_host=172.16.0.126
+nexenta_host= 10.3.188.98
 nexenta_rest_port=8457
 nexenta_user=admin
 nexenta_password=nexenta
-nexenta_volume=cinder
+nexenta_volume=test_iscsi

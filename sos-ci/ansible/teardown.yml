@@ -10,3 +10,5 @@
       login_tenant_name: "{{ os_tenant_name }}"
       auth_url: "{{ auth_url }}"
       name: "{{ instance_name }}"
+  - name: Pause for 200 seconds
+    pause: seconds=200

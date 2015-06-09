@@ -11,7 +11,7 @@
     key_name: "{{ key_name }}"
     wait_for: 300
   register: devstack_instance
-
+  
 - name: output info
   debug: var=devstack_instance
 
@@ -22,7 +22,7 @@
   wait_for:
     port: 22
     host: "{{ devstack_instance['private_ip'] }}"
-    timeout: 200
+    timeout: 100
     state: started
 
 - name: pause for 30 seconds
