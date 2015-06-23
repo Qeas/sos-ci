@@ -30,8 +30,8 @@ API_RATE_LIMIT=False
 USE_SCREEN=True
 
 # Settings to enable use of Driver
-CINDER_ENABLED_BACKENDS=ns_iscsi
-TEMPEST_VOLUME_DRIVER=cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver
+CINDER_ENABLED_BACKENDS=ns5_iscsi
+TEMPEST_VOLUME_DRIVER=cinder.volume.drivers.nexenta.ns5.iscsi.NexentaISCSIDriver
 TEMPEST_VOLUME_VENDOR="Nexenta"
 TEMPEST_STORAGE_PROTOCOL=iSCSI
 
@@ -42,11 +42,12 @@ CINDER_SECURE_DELETE=False
 CINDER_BRANCH=master
 
 [[post-config|$CINDER_CONF]]
-[ns_iscsi]
-volume_driver=cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver
-volume_backend_name=ns_iscsi
-nexenta_host= 172.16.0.99
-nexenta_rest_port=8457
-nexenta_user=admin
-nexenta_password=nexenta
-nexenta_volume=test_iscsi
+[ns5_iscsi]
+volume_driver = cinder.volume.drivers.nexenta.ns5.iscsi.NexentaISCSIDriver
+volume_backend_name = ns5_iscsi
+nexenta_host = 10.3.199.28
+nexenta_rest_port = 8080
+nexenta_user = root
+nexenta_password = ''
+nexenta_volume = ci/iscsi
+nexenta_capacitycheck = 100

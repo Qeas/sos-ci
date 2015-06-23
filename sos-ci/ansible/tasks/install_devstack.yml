@@ -24,6 +24,10 @@
   - name: send nexenta_shares config
     sudo: yes
     template: src=../../templates/shares.cfg dest=/home/ubuntu/shares.cfg
+
+  - name: send nexenta5_shares config
+    sudo: yes
+    template: src=../../templates/shares_ns5.cfg dest=/home/ubuntu/shares_ns5.cfg
     
   - name: send nexenta_driver hook
     sudo: no

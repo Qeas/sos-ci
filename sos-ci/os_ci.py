@@ -103,6 +103,7 @@ class JobThread(Thread):
         msg = ''
         logger.debug('Building gerrit review message...')
         msg = 'Commit: %s\nLogs: %s\n' % (commit_id, log_location)
+        failed = False
         for backend_name in results:
             result = results[backend_name]
             m, s = divmod(result['elapsed'], 60)
@@ -115,6 +116,7 @@ class JobThread(Thread):
                        (ci_name, log_location, backend_name, elapsed_str)
                 logger.debug("Created success cmd: %s", cmd)
             else:
+                failed = True
                 subject += " %s FAILED" % ci_name
                 msg += "Result: FAILED\n"
                 cmd += '* %s %s/%s : FAILURE in %s\n' % \
@@ -129,6 +131,7 @@ class JobThread(Thread):
 
         _send_notification_email(subject, msg)
 
+        #if not failed:
         logger.debug('Connecting to gerrit for voting '
                      '%(user)s@%(host)s:%(port)d '
                      'using keyfile %(key_file)s',
@@ -207,21 +210,25 @@ class JobThread(Thread):
                     res_dir = results_dir + '/' + backend_name
                     os.mkdir(res_dir)
 
-                    start = time.time()
-                    try:
-                        commit_id, success, output = \
-                            executor.just_doit(event['patchSet']['ref'],
-                                               res_dir, backend_name)
-                        logger.info('Completed just_doit: %(commit)s, '
-                                    '%(success)s, %(output)s',
-                                    {'commit': commit_id,
-                                     'success': success,
-                                     'output': output})
+                    num_retries = int(cfg.AccountInfo.num_retries)
+                    for t in xrange(num_retries):
+                        start = time.time()
+                        try:
+                            commit_id, success, output = \
+                                executor.just_doit(event['patchSet']['ref'],
+                                                   res_dir, backend_name)
+                            logger.info('Completed just_doit: %(commit)s, '
+                                        '%(success)s, %(output)s',
+                                        {'commit': commit_id,
+                                         'success': success,
+                                         'output': output})
 
-                    except InstanceBuildException:
-                        logger.error('Received InstanceBuildException...')
-                        pass
-                    elapsed = int(time.time() - start)
+                        except InstanceBuildException:
+                            logger.error('Received InstanceBuildException...')
+                            pass
+                        elapsed = int(time.time() - start)
+                        if success:
+                            break
 
                     if commit_id is None:
                         commit_id = revision
